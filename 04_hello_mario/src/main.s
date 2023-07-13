@@ -12,18 +12,18 @@ reset:
     cld             ;disable decimal mode (NES 6502 doesn't support it)
     ldx #$40
     stx $4017       ;disable sound irq
-    stx #$ff
+    ldx #$ff
     tsx             ;initialize the stack to 0xff
     inx             ;ff + 1 = 0
-.zeroPPU:
+ZeroPPU:
     stx $2000       ;PPUCTRL = 0
     stx $2001       ;PPUMASK = 0
     stx $4010       ;...
     :
     bit $2002       ;test bit 7 (vblank ready)
-    bpl -           ;branch if not negative (negative if bit 7 is 1)
+    bpl :-          ;branch if not negative (negative if bit 7 is 1)
     txa             ;A=X
-.clearMem:
+ClearMem:
     sta $0000, X    ;$0000->$00FF   set to 0
     sta $0100, X    ;$0100->$01FF   set to 0
     ;sta $0200, X   ;$0200->$02FF
@@ -36,7 +36,7 @@ reset:
     sta $0200, X    ;$0200->$02FF   set to FF (set aside for sprite data)
     lda #$00
     inx
-    bne .clearMem   ;if x rolled over to 0 move on
+    bne ClearMem   ;if x rolled over to 0 move on
 :
     bit $2002       ;test bit 7 (vblank ready)
     bpl :-          ;branch if not negative (negative if bit 7 is 1)
@@ -96,7 +96,8 @@ SpriteData:
 .byte $20, $07, $00, $10
 
 .segment "VECTORS"
-.word nmi reset
+.word nmi
+.word reset
 
 .segment "CHARS"
 .incbin "hellomario.chr"

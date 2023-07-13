@@ -76,6 +76,8 @@ loop:
     jmp loop
 
 nmi:
+    lda #$02            ; copy sprite data from $0200 -> PPU for display
+    sta $4014           ; -
     rti
 
 PalleteData:

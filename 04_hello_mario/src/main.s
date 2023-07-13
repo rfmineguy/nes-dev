@@ -58,6 +58,14 @@ LoadPalettes:           ; load pallete data into 0x03ff
     cpx #$20            ; there are 32 colors for the 2 palletes (BG and Sprite)
     bne LoadPalettes    ; loop as long as we haven't reached 20
 
+    ldx #$00
+LoadSprites:
+    lda SpriteData, X   ; get sprite byte
+    sta $0200, X        ; set oam data
+    inx
+    cpx #$20            ; there are 32 bytes for sprite pallete
+    bne LoadSprites
+
 loop:
     jmp loop
 
@@ -68,6 +76,17 @@ PalleteData:
 ; each pallete starts with $22 (our background color)
 .byte $22,$29,$1A,$0F,$22,$36,$17,$0f,$22,$30,$21,$0f,$22,$27,$17,$0f ;background pallete
 .byte $22,$16,$27,$18,$22,$1A,$30,$27,$22,$16,$30,$27,$22,$0F,$36,$17 ;sprite pallete
+
+SpriteData:
+.byte $08, $00, $00, $08 ; y-pos, tile-num, ..., x-pos
+.byte $08, $01, $00, $10
+.byte $10, $02, $00, $08
+.byte $10, $03, $00, $10
+.byte $18, $04, $00, $08
+.byte $18, $05, $00, $10
+.byte $20, $06, $00, $08
+.byte $20, $07, $00, $10
+
 .segment "VECTORS"
 .word nmi reset
 

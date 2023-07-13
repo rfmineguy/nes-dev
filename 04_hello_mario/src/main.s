@@ -37,12 +37,37 @@ reset:
     lda #$00
     inx
     bne .clearMem   ;if x rolled over to 0 move on
+:
+    bit $2002       ;test bit 7 (vblank ready)
+    bpl :-          ;branch if not negative (negative if bit 7 is 1)
+
+    lda #$02        ;OAM DMA high address (setup the address where sprite data lives $0200)
+    sta $4014       ;OAMDMA
+    nop             ;this operation takes a moment
+
+    lda #$3F        ;setup PPUADDR to 0x3f00 (see PPU memory map for why, its the BG Pallete)
+    sta $2006       ;highbyte = 3f
+    lda #$00
+    sta $2006       ;lowbyte = 00f
+
+    ldx #$00
+LoadPalettes:           ; load pallete data into 0x03ff
+    lda PalleteData, X  ; A = [PalleteData + X]
+    sta $2007           ; PPUDATA (automatically increments the address we write A to)
+    inx
+    cpx #$20            ; there are 32 colors for the 2 palletes (BG and Sprite)
+    bne LoadPalettes    ; loop as long as we haven't reached 20
+
 loop:
     jmp loop
 
 nmi:
     rti
 
+PalleteData:
+; each pallete starts with $22 (our background color)
+.byte $22,$29,$1A,$0F,$22,$36,$17,$0f,$22,$30,$21,$0f,$22,$27,$17,$0f ;background pallete
+.byte $22,$16,$27,$18,$22,$1A,$30,$27,$22,$16,$30,$27,$22,$0F,$36,$17 ;sprite pallete
 .segment "VECTORS"
 .word nmi reset
 

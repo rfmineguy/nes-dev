@@ -66,6 +66,12 @@ LoadSprites:
     cpx #$20            ; there are 32 bytes for sprite pallete
     bne LoadSprites
 
+    cli                 ; enable interrupts
+    lda #%10010000      ; enable nmi, set backround to use chr2 tiles ($1000)
+    sta $2000
+    lda #%00011110      ; enable sprites/background for left 8 pixels, and generally enable sprites and backgrounds
+    sta $2001
+
 loop:
     jmp loop
 

@@ -6,6 +6,7 @@
 .byte $00, $00, $00, $00
 .byte $00, $00, $00, $00, $00
 .segment "ZEROPAGE"
+zp_world: .res 2
 .segment "STARTUP"
 reset:
     sei             ;disable interrupts
@@ -49,6 +50,8 @@ ClearMem:
     sta $2006       ;highbyte = 3f
     lda #$00
     sta $2006       ;lowbyte = 00f
+    sta $2006
+    sta $2006
 
     ldx #$00
 LoadPalettes:           ; load pallete data into 0x03ff
@@ -58,6 +61,35 @@ LoadPalettes:           ; load pallete data into 0x03ff
     cpx #$20            ; there are 32 colors for the 2 palletes (BG and Sprite)
     bne LoadPalettes    ; loop as long as we haven't reached 20
 
+    ; Initialize world to point to world data label in zeropage
+    lda #<WorldData     ; get low byte of label, put into A
+    sta zp_world        ; store A into the world variable first byte
+    lda #>WorldData     ; get high byte of label, put into A
+    sta zp_world+1      ; store A into the world variable second byte
+
+    bit $2002           ; read from PPUSTATUS, reading this resets $2006 so its ready for its first byte again
+    lda #$20             ; setup address in PPU for nametable
+    sta $2006
+    lda #$00
+    sta $2006           ; $2000 -> PPUADDR ($2000 is nametable 1)
+
+    ldx #$00            ; x counts the amount of times y has overflowed
+    ldy #$00            ; y counts 0->255
+LoadWorld:
+    lda (zp_world), Y   ; load value at (world + y) address A = *(world + Y)
+    sta $2007           ; PPUDATA
+    iny
+    cpx #$03
+    bne :+              ; go to next un-named label
+    cpy #$C0
+    beq DoneLoadingWorld
+:
+    cpy #$00
+    bne LoadWorld
+    inx
+    inc zp_world+1     ; increment high byte of world variable
+    jmp LoadWorld
+DoneLoadingWorld:
     ldx #$00
 LoadSprites:
     lda SpriteData, X   ; get sprite byte
@@ -72,6 +104,8 @@ LoadSprites:
     lda #%00011110      ; enable sprites/background for left 8 pixels, and generally enable sprites and backgrounds
     sta $2001
 
+    ldx #$00
+
 loop:
     jmp loop
 
@@ -85,15 +119,18 @@ PalleteData:
 .byte $22,$29,$1A,$0F,$22,$36,$17,$0f,$22,$30,$21,$0f,$22,$27,$17,$0f ;background pallete
 .byte $22,$16,$27,$18,$22,$1A,$30,$27,$22,$16,$30,$27,$22,$0F,$36,$17 ;sprite pallete
 
+WorldData:
+.incbin "world.bin"      ; the world is represented as just data
+
 SpriteData:
-.byte $08, $00, $00, $08 ; y-pos, tile-num, ..., x-pos
-.byte $08, $01, $00, $10
-.byte $10, $02, $00, $08
-.byte $10, $03, $00, $10
-.byte $18, $04, $00, $08
-.byte $18, $05, $00, $10
-.byte $20, $06, $00, $08
-.byte $20, $07, $00, $10
+.byte $10, $00, $00, $08 ; y-pos, tile-num, pallete-num, x-pos
+.byte $10, $01, $00, $10
+.byte $18, $02, $00, $08
+.byte $18, $03, $00, $10
+.byte $20, $04, $00, $08
+.byte $20, $05, $00, $10
+.byte $28, $06, $00, $08
+.byte $28, $07, $00, $10
 
 .segment "VECTORS"
 .word nmi

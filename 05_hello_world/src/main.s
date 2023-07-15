@@ -1,6 +1,6 @@
-.segment "HEADER"
-.byte "NES", $1a
-.byte $02
+.segment "HEADER"               ; not used on real hardware (only useful for emulators)
+.byte "NES", $1a                ; iNES
+.byte $02                       ; 2x
 .byte $01
 .byte %00000000
 .byte $00, $00, $00, $00
@@ -47,16 +47,24 @@ ClearMem:
     sta $4014       ;OAMDMA
     nop             ;this operation takes a moment
 
-    lda #$3F        ;setup PPUADDR to 0x3f00 (see PPU memory map for why, its the BG Pallete)
-    sta $2006       ;highbyte = 3f
-    lda #$00
-    sta $2006       ;lowbyte = 00f
-    sta $2006
-    sta $2006
+
+    ; sta $2006
+    ; sta $2006
 
     ; lda $2000
     ; ora #00000100   ;set ppu increment mode
     ; sta $2000
+
+
+    lda #$00
+    sta $2001           ; disable rendering
+    lda #%00000000      
+    sta $2000           ; increment_mode: 1 byte
+
+    lda #$3F        ;setup PPUADDR to 0x3f00 (see PPU memory map for why, its the BG Pallete)
+    sta $2006       ;highbyte = 3f
+    lda #$00
+    sta $2006       ;lowbyte = 00f
 
     ldx #$00
     lda #$00
@@ -67,12 +75,6 @@ LoadPalettes:           ; load pallete data into 0x03ff
     cpx #$20            ; there are 32 colors for the 2 palletes (BG and Sprite)
     bne LoadPalettes    ; loop as long as we haven't reached 20
 
-    ; ldx #$2000
-
-    lda #$00
-    sta $2001           ; disable rendering
-    lda #%00000000      
-    sta $2000           ; inc by one
 BeginLoadWorld:
     ; Initialize world to point to world data label in zeropage
     ; NOTE: This isn't working right
@@ -92,7 +94,7 @@ BeginLoadWorld:
     ldy #$00            ; y counts 0->255
 LoadWorld:
     lda (zp_world), Y   ; load value at (world + y) address A = *(world + Y)
-    ;lda #$47
+    ;lda #$47           ; load particular value into ppu nametable 0
     sta $2007           ; PPUDATA
     iny
     cpx #$03
@@ -108,9 +110,16 @@ LoadWorld:
 DoneLoadingWorld:
     ldx #$00
     ldy #$00
+SetAttributes:
+    lda #$55
+    sta $2007
+    inx
+    cpx #$40
+    bne SetAttributes
 
-    lda #%00011110
-    sta $2001           ; re-enable rendering
+
+    ldx #$00
+    ldy #$00
 LoadSprites:
     lda SpriteData, X   ; get sprite byte
     sta $0200, X        ; set oam data
@@ -126,6 +135,8 @@ LoadSprites:
 
     ldx #$00
 
+    lda #%00011110
+    sta $2001           ; re-enable rendering
 loop:
     jmp loop
 

@@ -24,6 +24,7 @@ ZeroPPU:
     bit $2002       ;test bit 7 (vblank ready)
     bpl :-          ;branch if not negative (negative if bit 7 is 1)
     txa             ;A=X
+
 ClearMem:
     sta $0000, X    ;$0000->$00FF   set to 0
     sta $0100, X    ;$0100->$01FF   set to 0
@@ -37,7 +38,7 @@ ClearMem:
     sta $0200, X    ;$0200->$02FF   set to FF (set aside for sprite data)
     lda #$00
     inx
-    bne ClearMem   ;if x rolled over to 0 move on
+    bne ClearMem    ;if x rolled over to 0 move on
 :
     bit $2002       ;test bit 7 (vblank ready)
     bpl :-          ;branch if not negative (negative if bit 7 is 1)
@@ -53,7 +54,12 @@ ClearMem:
     sta $2006
     sta $2006
 
+    ; lda $2000
+    ; ora #00000100   ;set ppu increment mode
+    ; sta $2000
+
     ldx #$00
+    lda #$00
 LoadPalettes:           ; load pallete data into 0x03ff
     lda PalleteData, X  ; A = [PalleteData + X]
     sta $2007           ; PPUDATA (automatically increments the address we write A to)
@@ -61,14 +67,23 @@ LoadPalettes:           ; load pallete data into 0x03ff
     cpx #$20            ; there are 32 colors for the 2 palletes (BG and Sprite)
     bne LoadPalettes    ; loop as long as we haven't reached 20
 
+    ; ldx #$2000
+
+    lda #$00
+    sta $2001           ; disable rendering
+    lda #%00000000      
+    sta $2000           ; inc by one
+BeginLoadWorld:
     ; Initialize world to point to world data label in zeropage
+    ; NOTE: This isn't working right
+    ; It's not storing the world data address into zp_world
     lda #<WorldData     ; get low byte of label, put into A
     sta zp_world        ; store A into the world variable first byte
     lda #>WorldData     ; get high byte of label, put into A
     sta zp_world+1      ; store A into the world variable second byte
 
     bit $2002           ; read from PPUSTATUS, reading this resets $2006 so its ready for its first byte again
-    lda #$20             ; setup address in PPU for nametable
+    lda #$20            ; setup address in PPU for nametable
     sta $2006
     lda #$00
     sta $2006           ; $2000 -> PPUADDR ($2000 is nametable 1)
@@ -77,6 +92,7 @@ LoadPalettes:           ; load pallete data into 0x03ff
     ldy #$00            ; y counts 0->255
 LoadWorld:
     lda (zp_world), Y   ; load value at (world + y) address A = *(world + Y)
+    ;lda #$47
     sta $2007           ; PPUDATA
     iny
     cpx #$03
@@ -91,11 +107,15 @@ LoadWorld:
     jmp LoadWorld
 DoneLoadingWorld:
     ldx #$00
+    ldy #$00
+
+    lda #%00011110
+    sta $2001           ; re-enable rendering
 LoadSprites:
     lda SpriteData, X   ; get sprite byte
     sta $0200, X        ; set oam data
     inx
-    cpx #$20            ; there are 32 bytes for sprite pallete
+    cpx #$20            ; 32 bytes of sprite oam data
     bne LoadSprites
 
     cli                 ; enable interrupts
